@@ -11,16 +11,16 @@ import (
 
 type OrderBook struct {
 	ticker string
-	bids   utils.OrderPriorityQueue
-	asks   utils.OrderPriorityQueue
+	Bids   utils.OrderPriorityQueue
+	Asks   utils.OrderPriorityQueue
 }
 
 // NewOrderBook returns a new instance of OrderBook for a ticker
 func NewOrderBook(ticker string) *OrderBook {
 	return &OrderBook{
 		ticker: ticker,
-		bids:   make(utils.OrderPriorityQueue, 0),
-		asks:   make(utils.OrderPriorityQueue, 0),
+		Bids:   make(utils.OrderPriorityQueue, 0),
+		Asks:   make(utils.OrderPriorityQueue, 0),
 	}
 }
 
@@ -55,40 +55,40 @@ func (ob *OrderBook) AddLimitOrder(ticker string, priceString string, quantity i
 	}
 
 	if newOrder.IsBid {
-		ob.bids.Push(newOrder)
+		ob.Bids.Push(newOrder)
 	} else {
-		ob.asks.Push(newOrder)
+		ob.Asks.Push(newOrder)
 	}
 
 	return true
 }
 
 func (ob *OrderBook) Match() {
-	for ob.bids.Len() > 0 && ob.asks.Len() > 0 {
-		buy := ob.bids[0]
-		sell := ob.asks[0]
+	for ob.Bids.Len() > 0 && ob.Asks.Len() > 0 {
+		buy := ob.Bids[0]
+		sell := ob.Asks[0]
 
 		// Can't fulfill the matching push these orders back to the orderbook
 		if buy.Price.LessThan(sell.Price) {
 			break
 		}
 
-		buy = ob.bids.Pop().(*utils.LimitOrder)
-		sell = ob.asks.Pop().(*utils.LimitOrder)
+		buy = ob.Bids.Pop().(*utils.LimitOrder)
+		sell = ob.Asks.Pop().(*utils.LimitOrder)
 
 		quantity_filled := intMin(buy.Quantity, sell.Quantity)
-		fmt.Printf("Matched %d shares at %d\n", quantity_filled, sell.Price)
+		fmt.Printf("Ticker %s - Matched %d shares at %s\n", ob.ticker, quantity_filled, sell.Price.String())
 
 		buy.Quantity -= quantity_filled
 		sell.Quantity -= quantity_filled
 
 		// Order lots are partially fulfilled
 		if buy.Quantity > 0 {
-			ob.bids.Push(buy)
+			ob.Bids.Push(buy)
 		}
 
 		if sell.Quantity > 0 {
-			ob.asks.Push(sell)
+			ob.Asks.Push(sell)
 		}
 	}
 }
