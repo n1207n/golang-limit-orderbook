@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"container/heap"
 	"fmt"
 	"github.com/google/uuid"
 	utils "github.com/n1207n/golang-limit-orderbook/utils"
@@ -17,11 +18,15 @@ type OrderBook struct {
 
 // NewOrderBook returns a new instance of OrderBook for a ticker
 func NewOrderBook(ticker string) *OrderBook {
-	return &OrderBook{
+	ob := &OrderBook{
 		ticker: ticker,
 		Bids:   make(utils.OrderPriorityQueue, 0),
 		Asks:   make(utils.OrderPriorityQueue, 0),
 	}
+
+	heap.Init(&ob.Bids)
+	heap.Init(&ob.Asks)
+	return ob
 }
 
 func intMin(a int, b int) int {
@@ -55,9 +60,9 @@ func (ob *OrderBook) AddLimitOrder(ticker string, priceString string, quantity i
 	}
 
 	if newOrder.IsBid {
-		ob.Bids.Push(newOrder)
+		heap.Push(&ob.Bids, newOrder)
 	} else {
-		ob.Asks.Push(newOrder)
+		heap.Push(&ob.Asks, newOrder)
 	}
 
 	return true
@@ -65,30 +70,32 @@ func (ob *OrderBook) AddLimitOrder(ticker string, priceString string, quantity i
 
 func (ob *OrderBook) Match() {
 	for ob.Bids.Len() > 0 && ob.Asks.Len() > 0 {
-		buy := ob.Bids[0]
-		sell := ob.Asks[0]
-
 		// Can't fulfill the matching push these orders back to the orderbook
+		buy := ob.Bids.Peek().(*utils.LimitOrder)
+		sell := ob.Asks.Peek().(*utils.LimitOrder)
+
+		fmt.Printf("bid/ask to match: %d shares at %s VS %d shares at %s\n", buy.Quantity, buy.Price.String(), sell.Quantity, sell.Price.String())
+
 		if buy.Price.LessThan(sell.Price) {
 			break
 		}
 
-		buy = ob.Bids.Pop().(*utils.LimitOrder)
-		sell = ob.Asks.Pop().(*utils.LimitOrder)
+		buy = heap.Pop(&ob.Bids).(*utils.LimitOrder)
+		sell = heap.Pop(&ob.Asks).(*utils.LimitOrder)
 
-		quantity_filled := intMin(buy.Quantity, sell.Quantity)
-		fmt.Printf("Ticker %s - Matched %d shares at %s\n", ob.ticker, quantity_filled, sell.Price.String())
+		quantityFilled := intMin(buy.Quantity, sell.Quantity)
+		fmt.Printf("Ticker %s - Matched %d shares at %s\n", ob.ticker, quantityFilled, sell.Price.String())
 
-		buy.Quantity -= quantity_filled
-		sell.Quantity -= quantity_filled
+		buy.Quantity -= quantityFilled
+		sell.Quantity -= quantityFilled
 
 		// Order lots are partially fulfilled
 		if buy.Quantity > 0 {
-			ob.Bids.Push(buy)
+			heap.Push(&ob.Bids, buy)
 		}
 
 		if sell.Quantity > 0 {
-			ob.Asks.Push(sell)
+			heap.Push(&ob.Asks, sell)
 		}
 	}
 }

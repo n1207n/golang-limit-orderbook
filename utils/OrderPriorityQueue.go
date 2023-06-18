@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"time"
@@ -13,7 +14,10 @@ type LimitOrder struct {
 	Quantity  int
 	IsBid     bool
 	Timestamp time.Time
-	Index     int // The index of the LimitOrder in the heap.
+}
+
+func (lo LimitOrder) String() string {
+	return fmt.Sprintf("[%s - %s - %d - Is Buy: %t - %d - %s]\n", lo.Ticker, lo.Price.String(), lo.Quantity, lo.IsBid, lo.Timestamp.UnixMilli(), lo.ID.String())
 }
 
 // A OrderPriorityQueue implements heap.Interface and holds LimitOrders.
@@ -33,14 +37,10 @@ func (pq OrderPriorityQueue) Less(i, j int) bool {
 
 func (pq OrderPriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].Index = i
-	pq[j].Index = j
 }
 
 func (pq *OrderPriorityQueue) Push(x any) {
-	n := len(*pq)
 	limitOrder := x.(*LimitOrder)
-	limitOrder.Index = n
 	*pq = append(*pq, limitOrder)
 }
 
@@ -48,8 +48,11 @@ func (pq *OrderPriorityQueue) Pop() any {
 	old := *pq
 	n := len(old)
 	limitOrder := old[n-1]
-	old[n-1] = nil        // avoid memory leak
-	limitOrder.Index = -1 // for safety
 	*pq = old[0 : n-1]
 	return limitOrder
+}
+
+func (pq *OrderPriorityQueue) Peek() any {
+	old := *pq
+	return old[0]
 }

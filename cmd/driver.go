@@ -3,25 +3,24 @@ package main
 import (
 	"fmt"
 	"github.com/n1207n/golang-limit-orderbook/entities"
-	"github.com/n1207n/golang-limit-orderbook/utils"
 	"math/rand"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const (
-	N        = 100_000
-	MaxPrice = 300
-	MinPrice = 150
+	N            = 100_000
+	BuyMaxPrice  = 300
+	BuyMinPrice  = 150
+	SellMaxPrice = 450
+	SellMinPrice = 250
 )
 
 func main() {
 	orderbooks := map[string]*entities.OrderBook{
 		"aapl": entities.NewOrderBook("aapl"),
-		//"hood": entities.NewOrderBook("hood"),
-		//"spy":  entities.NewOrderBook("spy"),
-		//"amzn": entities.NewOrderBook("amzn"),
-		//"meta": entities.NewOrderBook("meta"),
+		"hood": entities.NewOrderBook("hood"),
 	}
 
 	wg := &sync.WaitGroup{}
@@ -31,13 +30,15 @@ func main() {
 	// Populate bid orders
 	for ticker, ob := range orderbooks {
 		wg.Add(1)
-		go addTestLimitOrder(wg, ob, ticker, true)
+		addTestLimitOrder(wg, ob, ticker, true)
 	}
+
+	wg.Wait()
 
 	// Populate ask orders
 	for ticker, ob := range orderbooks {
 		wg.Add(1)
-		go addTestLimitOrder(wg, ob, ticker, false)
+		addTestLimitOrder(wg, ob, ticker, false)
 	}
 
 	wg.Wait()
@@ -55,23 +56,26 @@ func main() {
 
 func addTestLimitOrder(wg *sync.WaitGroup, ob *entities.OrderBook, ticker string, isBid bool) {
 	for i := 0; i < N; i++ {
-		priceString := strconv.FormatFloat(rand.Float64()*(MaxPrice-MinPrice), 'f', 2, 64)
+		var randomPrice float64
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+		if isBid {
+			randomPrice = BuyMinPrice + r.Float64()*(BuyMaxPrice-BuyMinPrice)
+
+		} else {
+			randomPrice = SellMinPrice + r.Float64()*(SellMaxPrice-SellMinPrice)
+		}
+
+		priceString := strconv.FormatFloat(randomPrice, 'f', 2, 64)
+		quantity := r.Intn(50000)
 
 		ob.AddLimitOrder(
 			ticker,
 			priceString,
-			rand.Intn(2000),
+			quantity,
 			isBid)
 
-		var latestOrder *utils.LimitOrder
-
-		if isBid {
-			latestOrder = ob.Bids[0]
-		} else {
-			latestOrder = ob.Asks[0]
-		}
-
-		fmt.Printf("Created limit order - ticker: %s price: %s quantity: %d isBid: %t timestamp: %d \n", ticker, latestOrder.Price.String(), latestOrder.Quantity, latestOrder.IsBid, latestOrder.Timestamp.UnixMilli())
+		fmt.Printf("Created limit order - ticker: %s price: %s quantity: %d isBid: %t \n", ticker, priceString, quantity, isBid)
 	}
 
 	wg.Done()
