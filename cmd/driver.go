@@ -71,7 +71,7 @@ func addTestLimitOrder(wg *sync.WaitGroup, ob *entities.OrderBook, ticker string
 			latestOrder = ob.Asks[0]
 		}
 
-		fmt.Printf("Created limit order - ticker: %s price: %s quantity: %d isBid: %t timestamp: %s \n", ticker, latestOrder.Price.String(), latestOrder.Quantity, latestOrder.IsBid, latestOrder.Timestamp.String())
+		fmt.Printf("Created limit order - ticker: %s price: %s quantity: %d isBid: %t timestamp: %d \n", ticker, latestOrder.Price.String(), latestOrder.Quantity, latestOrder.IsBid, latestOrder.Timestamp.UnixMilli())
 	}
 
 	wg.Done()
